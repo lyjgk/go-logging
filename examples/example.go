@@ -37,10 +37,12 @@ func main() {
 
 	// Only errors and more severe messages should be sent to backend1
 	backend1Leveled := logging.AddModuleLevel(backend1)
-	backend1Leveled.SetLevel(logging.TRACE, "")
+	backend1Leveled.SetLevel(logging.ERROR, "")
+	backend2Leveled := logging.AddModuleLevel(backend2Formatter)
+	backend2Leveled.SetLevel(logging.TRACE, "")
 
 	// Set the backends to be used.
-	logging.SetBackend(logging.MultiLogger(backend1Leveled, backend2Formatter))
+	logging.SetBackend(logging.MultiLogger(backend1Leveled, backend2Leveled))
 
 	log.Tracef("tracef %s", Password("secret"))
 	log.Debugf("debug %s", Password("secret"))

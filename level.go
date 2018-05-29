@@ -18,7 +18,8 @@ type Level int
 
 // Log levels.
 const (
-	PRINT Level = iota
+	OFF Level = iota
+	PRINT
 	CRITICAL
 	ERROR
 	WARNING
@@ -29,6 +30,7 @@ const (
 )
 
 var levelNames = []string{
+	"OFF",
 	"PRINT",
 	"CRITICAL",
 	"ERROR",
