@@ -69,13 +69,18 @@ var (
 
 // LogBackend utilizes the standard log module.
 type LogBackend struct {
-	Logger *log.Logger
-	Color  bool
+	Logger    *log.Logger
+	ErrLogger *log.Logger
+	Color     bool
 }
 
 // NewLogBackend creates a new LogBackend.
-func NewLogBackend(out io.Writer, prefix string, flag int) *LogBackend {
-	return &LogBackend{Logger: log.New(out, prefix, flag)}
+func NewLogBackend(out io.Writer, prefix string, flag int, errOut ...io.Writer) *LogBackend {
+	b := &LogBackend{Logger: log.New(out, prefix, flag)}
+	if len(errOut) > 0 {
+		b.ErrLogger = log.New(errOut[0], prefix, flag)
+	}
+	return b
 }
 
 // Log implements the Backend interface.
@@ -86,7 +91,12 @@ func (b *LogBackend) Log(calldepth int, rec *Record) {
 	} else {
 		msg = rec.Formatted(calldepth+1, false)
 	}
-	err := b.Logger.Output(calldepth+2, msg)
+	var err error
+	if rec.Level > ERROR || b.ErrLogger == nil || rec.Level == PRINT {
+		err = b.Logger.Output(calldepth+2, msg)
+	} else {
+		err = b.ErrLogger.Output(calldepth+2, msg)
+	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "unable to Console Log msg:%s [error]%s\n", msg, err.Error())
 	}
