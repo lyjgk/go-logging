@@ -1,4 +1,4 @@
-module github.com/luojiego/go-logging
+module github.com/luojiego/go-logging/v2
 
 go 1.20
 
