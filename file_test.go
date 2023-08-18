@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestFile1(t *testing.T) {
@@ -195,4 +197,123 @@ func BenchmarkFileOnGoroutine(b *testing.B) {
 	}
 	fileBackend.Close()
 	os.Remove("test4.log")
+}
+
+func TestFileBackend_doRotate(t *testing.T) {
+	assert := assert.New(t)
+	file, err := os.OpenFile("test.log", os.O_CREATE|os.O_RDWR, 0666)
+	if err != nil {
+		assert.FailNow(err.Error())
+	}
+	file.WriteString("hello")
+
+	type fields struct {
+		status           int8
+		Filename         string
+		fileWriter       *os.File
+		MaxLines         int
+		maxLinesCurLines int
+		MaxSize          int
+		maxSizeCurSize   int
+		Daily            bool
+		MaxDays          int64
+		dailyOpenDate    int
+		Rotate           bool
+		Perm             os.FileMode
+		fileNameOnly     string
+		suffix           string
+		asyncMsgChan     chan []byte
+		asyncSignalChan  chan struct{}
+	}
+	type args struct {
+		logTime time.Time
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		err    string
+	}{
+		{
+			name: "max size > 0",
+			fields: fields{
+				status:           0,
+				Filename:         "test.log",
+				fileWriter:       file,
+				MaxLines:         0,
+				maxLinesCurLines: 0,
+				MaxSize:          10,
+				maxSizeCurSize:   0,
+				Daily:            false,
+				MaxDays:          0,
+				dailyOpenDate:    0,
+				Rotate:           false,
+				Perm:             0660,
+				fileNameOnly:     "test",
+				suffix:           ".log",
+				asyncMsgChan:     make(chan []byte),
+				asyncSignalChan:  make(chan struct{}),
+			},
+			args: args{
+				logTime: time.Now(),
+			},
+			err: "",
+		},
+		{
+			name: "test rotate",
+			fields: fields{
+				status:           0,
+				Filename:         "test.log",
+				fileWriter:       file,
+				MaxLines:         0,
+				maxLinesCurLines: 0,
+				MaxSize:          0,
+				maxSizeCurSize:   0,
+				Daily:            false,
+				MaxDays:          0,
+				dailyOpenDate:    0,
+				Rotate:           false,
+				Perm:             0660,
+				fileNameOnly:     "test",
+				suffix:           ".log",
+				asyncMsgChan:     make(chan []byte),
+				asyncSignalChan:  make(chan struct{}),
+			},
+			args: args{
+				logTime: time.Now(),
+			},
+			err: "",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			w := &FileBackend{
+				status:           tt.fields.status,
+				Filename:         tt.fields.Filename,
+				fileWriter:       tt.fields.fileWriter,
+				MaxLines:         tt.fields.MaxLines,
+				maxLinesCurLines: tt.fields.maxLinesCurLines,
+				MaxSize:          tt.fields.MaxSize,
+				maxSizeCurSize:   tt.fields.maxSizeCurSize,
+				Daily:            tt.fields.Daily,
+				MaxDays:          tt.fields.MaxDays,
+				dailyOpenDate:    tt.fields.dailyOpenDate,
+				Rotate:           tt.fields.Rotate,
+				Perm:             tt.fields.Perm,
+				fileNameOnly:     tt.fields.fileNameOnly,
+				suffix:           tt.fields.suffix,
+				asyncMsgChan:     tt.fields.asyncMsgChan,
+				asyncSignalChan:  tt.fields.asyncSignalChan,
+			}
+			if err := w.doRotate(tt.args.logTime); err != nil {
+				if tt.err == "" {
+					assert.Equal(err.Error(), "", "test: ["+tt.name+"] return not nil but want nil")
+				} else {
+					assert.Contains(err.Error(), tt.err, "test: ["+tt.name+"] error message not eq")
+				}
+			} else {
+				assert.Equal("", tt.err, "test: ["+tt.name+"] return nil but want not nil")
+			}
+		})
+	}
 }
